@@ -1,7 +1,8 @@
-src
+/src
 /config
-examples
-test
+/examples
+/test
+/integrationTests
 tsconfig.json
 tslint.json
 .travis.yml
