@@ -1,6 +1,5 @@
 src
-./config
-!dist/config
+/config
 examples
 test
 tsconfig.json
