@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 class MosString128 {
     /** */
     constructor(str) {
-        this.string = str;
+        this.string = '' + str + '';
     }
     /** */
     toString() {

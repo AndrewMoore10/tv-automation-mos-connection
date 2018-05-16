@@ -1,6 +1,8 @@
 import { MosTime } from '../dataTypes/mosTime';
 import { MosString128 } from '../dataTypes/mosString128';
 import { IMOSExternalMetaData } from '../dataTypes/mosExternalMetaData';
+import { MosMessage } from '../mosModel/MosMessage';
+import * as XMLBuilder from 'xmlbuilder';
 export declare enum IMOSListMachInfoDefaultActiveXMode {
     MODALDIALOG = "MODALDIALOG",
     MODELESS = "MODELESS",
@@ -38,4 +40,11 @@ export interface IMOSListMachInfo {
     };
     defaultActiveX?: Array<IMOSDefaultActiveX>;
     mosExternalMetaData?: Array<IMOSExternalMetaData>;
+}
+export declare class ListMachineInfo extends MosMessage {
+    info: IMOSListMachInfo;
+    /** */
+    constructor(info: IMOSListMachInfo);
+    /** */
+    readonly messageXMLBlocks: XMLBuilder.XMLElementOrXMLNode;
 }

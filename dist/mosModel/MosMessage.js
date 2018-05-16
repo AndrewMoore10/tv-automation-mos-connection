@@ -2,13 +2,21 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const XMLBuilder = require("xmlbuilder");
 class MosMessage {
+    static getNewMessageID() {
+        // increments and returns a signed 32-bit int counting from 1, resetting to 1 when wrapping
+        MosMessage._messageID++;
+        if (MosMessage._messageID >= MosMessage.MAX_MESSAGE_ID)
+            MosMessage._messageID = 1;
+        return MosMessage._messageID;
+    }
     /** */
-    prepare() {
+    prepare(messageID) {
         if (!this.mosID)
             throw new Error(`Can't prepare message: mosID missing`);
         if (!this.ncsID)
             throw new Error(`Can't prepare message: ncsID missing`);
-        this._messageID = MosMessage.messageID;
+        // if (!this.port) throw new Error(`Can't prepare message: port missing`)
+        this._messageID = (messageID ? messageID : MosMessage.getNewMessageID());
     }
     /** */
     get messageID() {
@@ -24,11 +32,6 @@ class MosMessage {
         xml.ele('messageID', this.messageID);
         xml.importDocument(this.messageXMLBlocks);
         return xml.end({ pretty: true });
-    }
-    /**  */
-    static get messageID() {
-        // increments and returns a signed 32-bit int counting from 1, resetting to 1 when wrapping
-        return MosMessage._messageID = MosMessage._messageID >= MosMessage.MAX_MESSAGE_ID ? 1 : MosMessage._messageID + 1;
     }
 }
 MosMessage.MAX_MESSAGE_ID = Math.pow(2, 31) - 2;

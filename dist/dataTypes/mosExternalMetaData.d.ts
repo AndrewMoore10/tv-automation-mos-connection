@@ -9,12 +9,12 @@ export declare enum IMOSScope {
     STORY = "STORY",
     PLAYLIST = "PLAYLIST",
 }
-export declare class mosExternalMetaData {
-    private _scope;
+export declare class MosExternalMetaData {
+    private _scope?;
     private _schema;
     private _payload;
     constructor(obj: IMOSExternalMetaData);
-    readonly scope: IMOSScope;
+    readonly scope: IMOSScope | undefined;
     readonly schema: string;
     readonly payload: any;
     readonly messageXMLBlocks: XMLBuilder.XMLElementOrXMLNode;

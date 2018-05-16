@@ -2,12 +2,6 @@
 import { Socket } from 'net';
 import { ConnectionType } from './socketConnection';
 /** */
-export declare abstract class MosDevice {
-    private _id;
-    /** */
-    readonly id: string;
-}
-/** */
 export declare class Server {
     private _sockets;
     /** */

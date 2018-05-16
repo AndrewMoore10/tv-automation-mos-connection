@@ -3,13 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /** */
 var SocketConnectionEvent;
 (function (SocketConnectionEvent) {
-    // CONNECTED = 'eventsocketconnectionconnected',
-    // DISCONNECTED = 'eventsocketconnectiondisconnected',
-    // DISPOSED = 'eventsocketconnectiondisposed',
-    // TIMEOUT = 'eventsocketconnectiontimeout',
-    // ALIVE = 'eventsocketconnectionalive',
-    // REGISTER = 'eventsocketconnectionregister',
-    // UNREGISTER = 'eventsocketconnectionunregister'
+    SocketConnectionEvent["CONNECTED"] = "eventsocketconnectionconnected";
+    SocketConnectionEvent["DISCONNECTED"] = "eventsocketconnectiondisconnected";
+    SocketConnectionEvent["DISPOSED"] = "eventsocketconnectiondisposed";
+    SocketConnectionEvent["TIMEOUT"] = "eventsocketconnectiontimeout";
+    SocketConnectionEvent["ALIVE"] = "eventsocketconnectionalive";
+    SocketConnectionEvent["REGISTER"] = "eventsocketconnectionregister";
+    SocketConnectionEvent["UNREGISTER"] = "eventsocketconnectionunregister";
 })(SocketConnectionEvent = exports.SocketConnectionEvent || (exports.SocketConnectionEvent = {}));
 /** */
 var SocketServerEvent;

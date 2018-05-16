@@ -4,25 +4,27 @@ import { MosDuration } from './dataTypes/mosDuration';
 import { MosString128 } from './dataTypes/mosString128';
 import { IMOSExternalMetaData } from './dataTypes/mosExternalMetaData';
 import { IMOSListMachInfo } from './mosModel/0_listMachInfo';
+import { MosDevice } from './MosDevice';
 export interface IMosConnection {
-    readonly isListening: Promise<boolean[]>;
+    readonly isListening: boolean;
     readonly acceptsConnections: boolean;
     readonly profiles: IProfiles;
     readonly isCompliant: boolean;
     readonly complianceText: string;
     dispose: () => Promise<void>;
-    connect: (connectionOptions: IMOSDeviceConnectionOptions) => Promise<IMOSDevice>;
-    onConnection: (cb: (mosDevice: IMOSDevice) => void) => void;
+    connect: (connectionOptions: IMOSDeviceConnectionOptions) => Promise<MosDevice>;
+    onConnection: (cb: (mosDevice: MosDevice) => void) => void;
 }
 export interface IMOSDevice {
-    id: string;
+    idPrimary: string;
+    idSecondary: string | null;
     getMachineInfo: () => Promise<IMOSListMachInfo>;
     onGetMachineInfo: (cb: () => Promise<IMOSListMachInfo>) => void;
     onConnectionChange: (cb: (connectionStatus: IMOSConnectionStatus) => void) => void;
     getConnectionStatus: () => IMOSConnectionStatus;
     onRequestMOSObject: (cb: (objId: string) => Promise<IMOSObject | null>) => void;
     onRequestAllMOSObjects: (cb: () => Promise<Array<IMOSObject>>) => void;
-    getMOSObject: (objId: string) => Promise<IMOSObject>;
+    getMOSObject: (objId: MosString128) => Promise<IMOSObject>;
     getAllMOSObjects: () => Promise<Array<IMOSObject>>;
     onCreateRunningOrder: (cb: (ro: IMOSRunningOrder) => Promise<IMOSROAck>) => void;
     onReplaceRunningOrder: (cb: (ro: IMOSRunningOrder) => Promise<IMOSROAck>) => void;
@@ -47,7 +49,8 @@ export interface IMOSDevice {
     onRODeleteItems: (cb: (Action: IMOSStoryAction, Items: Array<MosString128>) => Promise<IMOSROAck>) => void;
     onROSwapStories: (cb: (Action: IMOSROAction, StoryID0: MosString128, StoryID1: MosString128) => Promise<IMOSROAck>) => void;
     onROSwapItems: (cb: (Action: IMOSStoryAction, ItemID0: MosString128, ItemID1: MosString128) => Promise<IMOSROAck>) => void;
-    onROStory: (cb: (story: IMOSROFullStory) => Promise<any>) => void;
+    getAllRunningOrders: () => Promise<Array<IMOSRunningOrderBase>>;
+    onROStory: (cb: (story: IMOSROFullStory) => Promise<IMOSROAck>) => void;
 }
 export { IMOSListMachInfo };
 export interface IMOSROAction {
@@ -89,7 +92,7 @@ export interface IMOSRunningOrderBase {
     DefaultChannel?: MosString128;
     EditorialStart?: MosTime;
     EditorialDuration?: MosDuration;
-    Trigger?: any;
+    Trigger?: MosString128;
     MacroIn?: MosString128;
     MacroOut?: MosString128;
     MosExternalMetaData?: Array<IMOSExternalMetaData>;
@@ -129,8 +132,15 @@ export interface IMOSItem {
     MacroIn?: MosString128;
     MacroOut?: MosString128;
     MosExternalMetaData?: Array<IMOSExternalMetaData>;
+    MosObjects?: Array<IMOSObject>;
 }
 export declare type MosDuration = MosDuration;
+export interface IMOSAck {
+    ID: MosString128;
+    Revision: Number;
+    Status: IMOSAckStatus;
+    Description: MosString128;
+}
 export interface IMOSROAck {
     ID: MosString128;
     Status: MosString128;
@@ -192,8 +202,8 @@ export interface IMOSObject {
     Created: MosTime;
     ChangedBy?: MosString128;
     Changed?: MosTime;
-    Description?: string;
-    mosExternalMetaData?: Array<IMOSExternalMetaData>;
+    Description?: any;
+    MosExternalMetaData?: Array<IMOSExternalMetaData>;
 }
 export declare enum IMOSObjectType {
     STILL = "STILL",
@@ -213,6 +223,10 @@ export declare enum IMOSObjectStatus {
     PLAY = "PLAY",
     STOP = "STOP",
 }
+export declare enum IMOSAckStatus {
+    ACK = "ACK",
+    NACK = "NACK",
+}
 export declare enum IMOSObjectAirStatus {
     READY = "READY",
     NOT_READY = "NOT READY",
@@ -227,3 +241,4 @@ export declare enum IMOSObjectPathType {
     PROXY_PATH = "PROXY PATH",
     METADATA_PATH = "METADATA PATH",
 }
+export { IMOSExternalMetaData };

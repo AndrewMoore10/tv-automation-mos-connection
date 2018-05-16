@@ -20,6 +20,11 @@ var IMOSObjectStatus;
     IMOSObjectStatus["PLAY"] = "PLAY";
     IMOSObjectStatus["STOP"] = "STOP";
 })(IMOSObjectStatus = exports.IMOSObjectStatus || (exports.IMOSObjectStatus = {}));
+var IMOSAckStatus;
+(function (IMOSAckStatus) {
+    IMOSAckStatus["ACK"] = "ACK";
+    IMOSAckStatus["NACK"] = "NACK";
+})(IMOSAckStatus = exports.IMOSAckStatus || (exports.IMOSAckStatus = {}));
 var IMOSObjectAirStatus;
 (function (IMOSObjectAirStatus) {
     IMOSObjectAirStatus["READY"] = "READY";

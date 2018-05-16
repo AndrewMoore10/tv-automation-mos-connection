@@ -5,64 +5,99 @@ const events_1 = require("events");
 const socketConnection_1 = require("./socketConnection");
 class MosSocketServer extends events_1.EventEmitter {
     /** */
-    constructor(port, description) {
+    constructor(port, description, debug) {
         super();
+        this._debug = false;
+        this._connectedSockets = [];
         this._port = port;
         this._portDescription = description;
-        this._socketServer = net_1.createServer();
+        if (debug)
+            this._debug = debug;
+        this._socketServer = new net_1.Server();
         this._socketServer.on('connection', (socket) => this._onClientConnection(socket));
         this._socketServer.on('close', () => this._onServerClose());
         this._socketServer.on('error', (error) => this._onServerError(error));
     }
-    /** */
-    listen() {
-        return new Promise((resolve, reject) => {
-            // already listening
-            if (this._socketServer.listening) {
-                resolve(true);
-                return;
-            }
-            // handles listening-listeners and cleans up
-            let handleListeningStatus = (e) => {
-                this._socketServer.removeListener('listening', handleListeningStatus);
-                this._socketServer.removeListener('close', handleListeningStatus);
-                this._socketServer.removeListener('error', handleListeningStatus);
-                if (this._socketServer.listening) {
-                    resolve(true);
-                }
-                else {
-                    reject(e || false);
-                }
-            };
-            // listens and handles error and events
-            this._socketServer.once('listening', handleListeningStatus);
-            this._socketServer.once('close', handleListeningStatus);
-            this._socketServer.once('error', handleListeningStatus);
-            this._socketServer.listen(this._port);
+    dispose(sockets) {
+        let closePromises = [];
+        // close clients
+        sockets.forEach(socket => {
+            closePromises.push(new Promise((resolve) => {
+                socket.on('close', resolve);
+                socket.end();
+                socket.destroy();
+            }));
         });
+        // close server
+        closePromises.push(new Promise((resolve) => {
+            // this._socketServer.on('close', resolve)
+            this._socketServer.close(() => {
+                resolve();
+            });
+        }));
+        // close any server connections:
+        this._connectedSockets.forEach((socket) => {
+            socket.destroy();
+        });
+        return Promise.all(closePromises);
     }
     /** */
-    dispose(sockets) {
-        return new Promise((resolveDispose) => {
-            let closePromises = [];
-            // close clients
-            sockets.forEach(socket => {
-                closePromises.push(new Promise((resolve) => {
-                    socket.on('close', resolve);
-                    socket.end();
-                    socket.destroy();
-                }));
-            });
-            // close server
-            closePromises.push(new Promise((resolve) => {
-                this._socketServer.on('close', resolve);
-                this._socketServer.close();
-            }));
-            Promise.all(closePromises).then(() => resolveDispose());
+    listen() {
+        if (this._debug)
+            console.log('listen', this._portDescription, this._port);
+        return new Promise((resolve, reject) => {
+            try {
+                if (this._debug)
+                    console.log('inside promise', this._portDescription, this._port);
+                // already listening
+                if (this._socketServer.listening) {
+                    if (this._debug)
+                        console.log('already listening', this._portDescription, this._port);
+                    resolve();
+                    return;
+                }
+                // handles listening-listeners and cleans up
+                let handleListeningStatus = (e) => {
+                    if (this._debug)
+                        console.log('handleListeningStatus');
+                    this._socketServer.removeListener('listening', handleListeningStatus);
+                    this._socketServer.removeListener('close', handleListeningStatus);
+                    this._socketServer.removeListener('error', handleListeningStatus);
+                    if (this._socketServer.listening) {
+                        if (this._debug)
+                            console.log('listening', this._portDescription, this._port);
+                        resolve();
+                    }
+                    else {
+                        if (this._debug)
+                            console.log('not listening', this._portDescription, this._port);
+                        reject(e || false);
+                    }
+                };
+                // listens and handles error and events
+                this._socketServer.on('listening', () => {
+                    if (this._debug)
+                        console.log('listening!!');
+                });
+                this._socketServer.once('listening', handleListeningStatus);
+                this._socketServer.once('close', handleListeningStatus);
+                this._socketServer.once('error', handleListeningStatus);
+                this._socketServer.listen(this._port);
+            }
+            catch (e) {
+                reject(e);
+            }
         });
     }
     /** */
     _onClientConnection(socket) {
+        this._connectedSockets.push(socket);
+        socket.on('close', () => {
+            let i = this._connectedSockets.indexOf(socket);
+            if (i !== -1) {
+                this._connectedSockets.splice(i, 1);
+            }
+        });
         this.emit(socketConnection_1.SocketServerEvent.CLIENT_CONNECTED, {
             socket: socket,
             portDescription: this._portDescription
@@ -71,12 +106,14 @@ class MosSocketServer extends events_1.EventEmitter {
     /** */
     _onServerError(error) {
         // @todo: implement
-        console.log('Server error:', error);
+        if (this._debug)
+            console.log('Server error:', error);
     }
     /** */
     _onServerClose() {
         // @todo: implement
-        console.log(`Server closed: on port ${this._port}`);
+        if (this._debug)
+            console.log(`Server closed: on port ${this._port}`);
     }
 }
 exports.MosSocketServer = MosSocketServer;

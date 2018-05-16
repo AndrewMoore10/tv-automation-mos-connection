@@ -1,19 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// import {ProfilesSupport} from '../config/connectionConfig';
-// import {Socket} from 'net';
-/** */
-class MosDevice {
-    // private _profiles: ProfilesSupport
-    // private _primaryServer: Server
-    // private _buddyServr: Server
-    // private _currentServer: Server = this._primaryServer
-    /** */
-    get id() {
-        return this._id;
-    }
-}
-exports.MosDevice = MosDevice;
 /** */
 class Server {
     constructor() {
@@ -23,14 +9,15 @@ class Server {
     }
     /** */
     registerIncomingConnection(socketID, socket, portDescription) {
-        this._sockets[socketID] = {
+        this._sockets[socketID + ''] = {
             socket: socket,
-            portDescription: portDescription
+            portDescription: portDescription,
+            chunks: ''
         };
     }
     /** */
     removeSocket(socketID) {
-        delete this._sockets[socketID];
+        delete this._sockets[socketID + ''];
     }
     /** */
     get lowerPortSockets() {

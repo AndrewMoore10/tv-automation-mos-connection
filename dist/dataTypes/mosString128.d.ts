@@ -1,7 +1,7 @@
 export declare class MosString128 {
     private _str;
     /** */
-    constructor(str: string);
+    constructor(str: any);
     /** */
     toString(): string;
     /** */

@@ -4,15 +4,15 @@ export declare abstract class MosMessage {
     private static _messageID;
     mosID: string;
     ncsID: string;
+    port: string;
     private _messageID;
+    private static getNewMessageID();
     /** */
-    prepare(): void;
+    prepare(messageID?: number): void;
     /** */
     readonly messageID: number;
     /** */
     toString(): string;
     /** */
     protected readonly abstract messageXMLBlocks: XMLBuilder.XMLElementOrXMLNode;
-    /**  */
-    private static readonly messageID;
 }

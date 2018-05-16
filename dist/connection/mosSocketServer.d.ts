@@ -6,12 +6,13 @@ export declare class MosSocketServer extends EventEmitter {
     private _port;
     private _portDescription;
     private _socketServer;
+    private _debug;
+    private _connectedSockets;
     /** */
-    constructor(port: number, description: IncomingConnectionType);
+    constructor(port: number, description: IncomingConnectionType, debug?: boolean);
+    dispose(sockets: Socket[]): Promise<void[]>;
     /** */
-    listen(): Promise<boolean>;
-    /** */
-    dispose(sockets: Socket[]): Promise<void>;
+    listen(): Promise<void>;
     /** */
     private _onClientConnection(socket);
     /** */

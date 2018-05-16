@@ -4,9 +4,12 @@ export interface IConnectionConfig {
     acceptsConnections: boolean;
     accepsConnectionsFrom?: string[];
     profiles: IProfiles;
+    debug?: boolean;
+    openRelay?: boolean;
 }
 /** */
 export interface IProfiles {
+    [key: string]: boolean | undefined;
     '0': boolean;
     '1'?: boolean;
     '2'?: boolean;
@@ -16,10 +19,12 @@ export interface IProfiles {
     '6'?: boolean;
     '7'?: boolean;
 }
-export declare class ConnectionConfig {
+export declare class ConnectionConfig implements IConnectionConfig {
     mosID: string;
     acceptsConnections: boolean;
     accepsConnectionsFrom: string[];
+    debug?: boolean;
+    openRelay?: boolean;
     private _profiles;
     constructor(init: IConnectionConfig);
     /** */
