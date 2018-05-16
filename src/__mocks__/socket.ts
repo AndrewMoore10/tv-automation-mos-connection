@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events'
 
-import { Socket} from 'net'
-import { Writable } from 'stream'
+import { Socket } from 'net'
+// import { Writable } from 'stream'
 
 // Mock the Socket class in 'net':
 
@@ -21,6 +21,10 @@ export class SocketMock extends EventEmitter implements Socket {
 	destroyed: boolean
 	writable: boolean
 	readable: boolean
+
+	public name: string
+	public connectedPort: number
+	public connectedHost: string
 
 	private _responses: Array<(data: any) => string | Buffer > = []
 
@@ -71,28 +75,32 @@ export class SocketMock extends EventEmitter implements Socket {
 		this.mockSentMessage.apply(this, arguments)
 		return true
 	}
-	connect () { return this }
+	connect (port, host) {
+		this.connectedPort = port
+		this.connectedHost = host
+		return this
+	}
 	setEncoding () { return this }
 	destroy () { /* nothing */ }
 	pause () { return this }
 	resume () { return this }
-	setTimeout (timeout: number, callback?: Function) { return this }
-	setNoDelay (noDelay?: boolean) { return this }
-	setKeepAlive (enable?: boolean, initialDelay?: number) { return this }
-	address () { return {port: 100, family: 'localhost', address: '127.0.0.1'} }
+	setTimeout (timeout: number, callback?: Function) { setTimeout(callback, timeout); return this }
+	setNoDelay (noDelay?: boolean) { noDelay = noDelay; return this }
+	setKeepAlive (enable?: boolean, initialDelay?: number) { enable = enable; initialDelay = initialDelay ;return this }
+	address () { return { port: 100, family: 'localhost', address: '127.0.0.1' } }
 	unref () { /* nothing */ }
 	ref () { /* nothing */ }
 	end () { /* nothing */ }
-	_write (chunk: any, encoding: string, callback: Function) { /* nothing */ }
-	setDefaultEncoding (encoding: string) { return this }
-	_read (size: number) { /* nothing */ }
-	read (size?: number) { /* nothing */ }
+	_write (chunk: any, encoding: string, callback: Function) { chunk = chunk; encoding = encoding; callback() /* nothing */ }
+	setDefaultEncoding (encoding: string) { encoding = encoding; return this }
+	_read (size: number) { size = size }
+	read (size?: number) { size = size }
 	isPaused () { return false }
-	pipe (destination, options?: { end?: boolean; }) { return destination }
-	unpipe (destination) { return this }
-	unshift (chunk: any) { /* nothing */ }
-	wrap (oldStream: NodeJS.ReadableStream) { return this }
-	push (chunk: any, encoding?: string) { return true }
+	pipe (destination, options?: { end?: boolean; }) { options = options; return destination }
+	unpipe (destination) { destination = destination; return this }
+	unshift (chunk: any) { chunk = chunk }
+	wrap (oldStream: NodeJS.ReadableStream) { oldStream = oldStream; return this }
+	push (chunk: any, encoding?: string) { chunk = chunk; encoding = encoding; return true }
 	_destroy () { /* nothing */ }
 	_final () { /* nothing */ }
 	cork () { /* nothing */ }
@@ -101,18 +109,23 @@ export class SocketMock extends EventEmitter implements Socket {
 	// ------------------------------------------------------------------------
 	// Mock methods:
 	mockSentMessage (data, encoding) {
-
+		// console.log('mockSentMessage ' + this.name, data)
+		encoding = encoding
 		if (this._responses.length) {
 			// send reply:
 
-			let cb = this._responses.shift()
+			let cb: any = this._responses.shift()
+			let msg
 
 			setTimeout(() => {
 
-				let msg = cb(data)
-
-				this.mockReceiveMessage(msg)
-			},5)
+				if (typeof cb === 'string') {
+					msg = cb
+				} else {
+					msg = cb(data)
+				}
+				if (msg !== false) this.mockReceiveMessage(msg)
+			},2)
 		}
 	}
 	mockReceiveMessage (msg: string | Buffer) {
@@ -123,6 +136,24 @@ export class SocketMock extends EventEmitter implements Socket {
 	}
 	mockClear () {
 		this._responses.splice(0, 9999)
+		// @ts-ignore
+		this.mockSentMessage.mockClear()
+	}
+	mockWaitForSentMessages () {
+		return new Promise((resolve) => {
+
+			let check = () => {
+				if (this._responses.length === 0) {
+					resolve()
+				} else {
+					setTimeout(() => {
+						check()
+					},2)
+				}
+			}
+			check()
+
+		})
 	}
 }
 

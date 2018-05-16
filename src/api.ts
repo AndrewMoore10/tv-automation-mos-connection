@@ -1,9 +1,10 @@
-import {IProfiles} from './config/connectionConfig'
-import {MosTime} from './dataTypes/mosTime'
-import {MosDuration} from './dataTypes/mosDuration'
-import {MosString128} from './dataTypes/mosString128'
-import {IMOSExternalMetaData} from './dataTypes/mosExternalMetaData'
-import {IMOSListMachInfo} from './mosModel/0_listMachInfo'
+import { IProfiles } from './config/connectionConfig'
+import { MosTime } from './dataTypes/mosTime'
+import { MosDuration } from './dataTypes/mosDuration'
+import { MosString128 } from './dataTypes/mosString128'
+import { IMOSExternalMetaData } from './dataTypes/mosExternalMetaData'
+import { IMOSListMachInfo } from './mosModel/0_listMachInfo'
+import { MosDevice } from './MosDevice'
 
 // import {IMOSListMachInfo as IMOSP0ListMachineInfo, IMOSListMachInfo} from "./mosModel/0_listMachInfo"
 // import {HeartBeat} from './mosModel/0_heartBeat';
@@ -47,7 +48,7 @@ import {IMOSListMachInfo} from './mosModel/0_listMachInfo'
 // }
 
 export interface IMosConnection {
-	readonly isListening: Promise<boolean[]>
+	readonly isListening: boolean
 
 	readonly acceptsConnections: boolean
 	readonly profiles: IProfiles
@@ -56,12 +57,13 @@ export interface IMosConnection {
 
 	dispose: () => Promise<void>
 	/*  */
-	connect: (connectionOptions: IMOSDeviceConnectionOptions) => Promise<IMOSDevice> // resolved when connection has been made (before .onConnection is fired)
-	onConnection: (cb: (mosDevice: IMOSDevice) => void) => void
+	connect: (connectionOptions: IMOSDeviceConnectionOptions) => Promise<MosDevice> // resolved when connection has been made (before .onConnection is fired)
+	onConnection: (cb: (mosDevice: MosDevice) => void) => void
 }
 
 export interface IMOSDevice {
-	id: string, // unique id for this device and session
+	idPrimary: string, // unique id for this device and session
+	idSecondary: string | null, // unique id for this device and session (buddy)
 	/* Profile 0 */
 	/*  */
 	getMachineInfo: () => Promise<IMOSListMachInfo>
@@ -73,7 +75,7 @@ export interface IMOSDevice {
 	/* Profile 1 */
 	onRequestMOSObject: (cb: (objId: string) => Promise<IMOSObject | null>) => void
 	onRequestAllMOSObjects: (cb: () => Promise<Array<IMOSObject>>) => void
-	getMOSObject: (objId: string) => Promise<IMOSObject>
+	getMOSObject: (objId: MosString128) => Promise<IMOSObject>
 	getAllMOSObjects: () => Promise<Array<IMOSObject>>
 
 	/* Profile 2 */
@@ -108,10 +110,10 @@ export interface IMOSDevice {
 	onROSwapItems: (cb: (Action: IMOSStoryAction, ItemID0: MosString128, ItemID1: MosString128) => Promise<IMOSROAck>) => void
 	/* Profile 3 */
 	/* Profile 4 */
-	// roStorySend:
-	onROStory: (cb: (story: IMOSROFullStory) => Promise<any>) => void
+	getAllRunningOrders: () => Promise<Array<IMOSRunningOrderBase>> // send roReqAll
+	onROStory: (cb: (story: IMOSROFullStory) => Promise<IMOSROAck>) => void // roStorySend
 }
-export {IMOSListMachInfo}
+export { IMOSListMachInfo }
 export interface IMOSROAction {
 	RunningOrderID: MosString128
 }
@@ -151,7 +153,7 @@ export interface IMOSRunningOrderBase {
 	DefaultChannel?: MosString128
 	EditorialStart?: MosTime
 	EditorialDuration?: MosDuration
-	Trigger?: any // TODO: Johan frågar vad denna gör
+	Trigger?: MosString128 // TODO: Johan frågar vad denna gör
 	MacroIn?: MosString128
 	MacroOut?: MosString128
 	MosExternalMetaData?: Array<IMOSExternalMetaData>
@@ -191,9 +193,17 @@ export interface IMOSItem {
 	MacroIn?: MosString128
 	MacroOut?: MosString128
 	MosExternalMetaData?: Array<IMOSExternalMetaData>
+	MosObjects?: Array<IMOSObject>
 }
 
 export type MosDuration = MosDuration // HH:MM:SS
+
+export interface IMOSAck {
+	ID: MosString128
+	Revision: Number // max 999
+	Status: IMOSAckStatus
+	Description: MosString128
+}
 
 export interface IMOSROAck {
 	ID: MosString128 // Running order id
@@ -266,8 +276,8 @@ export interface IMOSObject {
 	Created: MosTime
 	ChangedBy?: MosString128 // if not present, defaults to CreatedBy
 	Changed?: MosTime // if not present, defaults to Created
-	Description?: string
-	mosExternalMetaData?: Array<IMOSExternalMetaData>
+	Description?: any // xml json
+	MosExternalMetaData?: Array<IMOSExternalMetaData>
 }
 
 export enum IMOSObjectType {
@@ -290,6 +300,11 @@ export enum IMOSObjectStatus {
 	STOP = 'STOP'
 }
 
+export enum IMOSAckStatus {
+	ACK = 'ACK',
+	NACK = 'NACK'
+}
+
 export enum IMOSObjectAirStatus {
 	READY = 'READY',
 	NOT_READY = 'NOT READY'
@@ -306,3 +321,4 @@ export enum IMOSObjectPathType {
 	PROXY_PATH = 'PROXY PATH',
 	METADATA_PATH = 'METADATA PATH'
 }
+export { IMOSExternalMetaData }

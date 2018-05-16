@@ -36,7 +36,7 @@
     "build": "trash dist && yarn build:main",
     "build:main": "tsc -p tsconfig.json",
     "lint": "tslint --project tsconfig.jest.json --config tslint.json",
-    "unit": "jest",
+    "unit": "jest --forceExit",
     "test": "yarn lint && yarn unit",
     "test:integration": "yarn lint && jest --config=jest-integration.config.js",
     "watch": "jest --watch",
@@ -86,11 +86,11 @@
     "sleep-ms": "^2.0.1",
     "standard-version": "^4.0.0",
     "trash-cli": "^1.4.0",
-    "ts-jest": "^22.0.4",
-    "tslint": "^5.4.3",
-    "tslint-config-standard": "^6.0.1",
-    "typedoc": "^0.8.0",
-    "typescript": "^2.4.1"
+    "ts-jest": "^22.4.4",
+    "tslint": "^5.10.0",
+    "tslint-config-standard": "^7.0.0",
+    "typedoc": "^0.11.1",
+    "typescript": "^2.8.3"
   },
   "keywords": [
     "mos",
@@ -108,10 +108,12 @@
   ],
   "dependencies": {
     "@types/xml2js": "^0.4.2",
+    "@types/xml2json": "^0.10.0",
     "@types/xmlbuilder": "^0.0.32",
     "moment": "^2.20.1",
     "tslib": "^1.6.0",
     "xml2js": "^0.4.19",
+    "xml2json": "^0.11.2",
     "xmlbuilder": "^9.0.7"
   }
 }
