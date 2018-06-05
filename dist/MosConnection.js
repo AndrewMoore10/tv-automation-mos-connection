@@ -70,25 +70,12 @@ class MosConnection extends events_1.EventEmitter {
                 secondary.createClient(MosConnection.nextSocketID, MosConnection.CONNECTION_PORT_UPPER, 'upper');
             }
             // initialize mosDevice:
-            let mosDevice = this.registerMosDevice(this._conf.mosID, connectionOptions.primary.id, (connectionOptions.secondary ? connectionOptions.secondary.id : null), primary, secondary);
+            let mosDevice = this._registerMosDevice(this._conf.mosID, connectionOptions.primary.id, (connectionOptions.secondary ? connectionOptions.secondary.id : null), primary, secondary);
             resolve(mosDevice);
         });
     }
     onConnection(cb) {
         this._onconnection = cb;
-    }
-    registerMosDevice(myMosID, theirMosId0, theirMosId1, primary, secondary) {
-        let id0 = myMosID + '_' + theirMosId0;
-        let id1 = (theirMosId1 ? myMosID + '_' + theirMosId1 : null);
-        let mosDevice = new MosDevice_1.MosDevice(id0, id1, this._conf, primary, secondary);
-        this._mosDevices[id0] = mosDevice;
-        if (id1)
-            this._mosDevices[id1] = mosDevice;
-        mosDevice.connect();
-        // emit to .onConnection
-        if (this._onconnection)
-            this._onconnection(mosDevice);
-        return mosDevice;
     }
     /** */
     get isListening() {
@@ -115,20 +102,71 @@ class MosConnection extends events_1.EventEmitter {
                 sockets.push(e.socket);
             }
         }
-        let disposePromises = sockets.map((socket) => {
+        let disposePromises0 = sockets.map((socket) => {
             return new Promise((resolve) => {
                 socket.on('close', resolve);
                 socket.end();
                 socket.destroy();
             });
         });
-        disposePromises.push(this._lowerSocketServer.dispose([]));
-        disposePromises.push(this._upperSocketServer.dispose([]));
-        disposePromises.push(this._querySocketServer.dispose([]));
-        return Promise.all(disposePromises)
+        let disposePromises1 = [
+            this._lowerSocketServer.dispose([]),
+            this._upperSocketServer.dispose([]),
+            this._querySocketServer.dispose([])
+        ];
+        let disposePromises2 = [];
+        Object.keys(this._mosDevices).map(deviceId => {
+            let device = this._mosDevices[deviceId];
+            disposePromises2.push(this.disposeMosDevice(device));
+        });
+        return Promise.all(disposePromises0)
+            .then(() => {
+            return Promise.all(disposePromises1);
+        })
+            .then(() => {
+            return Promise.all(disposePromises2);
+        })
             .then(() => {
             return;
         });
+    }
+    getDevice(id) {
+        return this._mosDevices[id];
+    }
+    getDevices() {
+        return Object.keys(this._mosDevices).map((id) => {
+            return this._mosDevices[id];
+        });
+    }
+    disposeMosDevice(myMosIDOrMosDevice, theirMosId0, theirMosId1) {
+        let id0;
+        let id1;
+        if (myMosIDOrMosDevice && myMosIDOrMosDevice instanceof MosDevice_1.MosDevice) {
+            // myMosID = myMosIDOrMosDevice
+            let mosDevice = myMosIDOrMosDevice;
+            id0 = mosDevice.idPrimary;
+            id1 = mosDevice.idSecondary;
+        }
+        else {
+            let myMosID = myMosIDOrMosDevice;
+            id0 = myMosID + '_' + theirMosId0;
+            id1 = (theirMosId1 ? myMosID + '_' + theirMosId1 : null);
+        }
+        if (this._mosDevices[id0]) {
+            return this._mosDevices[id0].dispose()
+                .then(() => {
+                delete this._mosDevices[id0];
+            });
+        }
+        else if (id1 && this._mosDevices[id1]) {
+            return this._mosDevices[id1].dispose()
+                .then(() => {
+                delete this._mosDevices[id1 || ''];
+            });
+        }
+        else {
+            return Promise.reject('Device not found');
+        }
     }
     /** */
     get complianceText() {
@@ -143,6 +181,19 @@ class MosConnection extends events_1.EventEmitter {
             return `MOS Compatible – Profiles ${profiles.join(',')}`;
         }
         return 'Warning: Not MOS compatible';
+    }
+    _registerMosDevice(myMosID, theirMosId0, theirMosId1, primary, secondary) {
+        let id0 = myMosID + '_' + theirMosId0;
+        let id1 = (theirMosId1 ? myMosID + '_' + theirMosId1 : null);
+        let mosDevice = new MosDevice_1.MosDevice(id0, id1, this._conf, primary, secondary);
+        this._mosDevices[id0] = mosDevice;
+        if (id1)
+            this._mosDevices[id1] = mosDevice;
+        mosDevice.connect();
+        // emit to .onConnection
+        if (this._onconnection)
+            this._onconnection(mosDevice);
+        return mosDevice;
     }
     /** */
     _initiateIncomingConnections() {
@@ -175,7 +226,7 @@ class MosConnection extends events_1.EventEmitter {
         this.emit('rawMessage', 'incoming_' + socketID, 'newConnection', 'From ' + client.socket.remoteAddress + ':' + client.socket.remotePort);
         // console.log('_registerIncomingClient', socketID, e.socket.remoteAddress)
         // handles socket listeners
-        client.socket.on('close', ( /*hadError: boolean*/) => {
+        client.socket.on('close', () => {
             this._disposeIncomingSocket(socketID);
             this.emit('rawMessage', 'incoming_' + socketID, 'closedConnection', '');
         }); // => this._disposeIncomingSocket(e.socket, socketID))
@@ -243,10 +294,10 @@ class MosConnection extends events_1.EventEmitter {
                         // console.log('OPEN RELAY ------------------')
                         // Register a new mosDevice to use for this connection
                         if (parsed.mos.ncsID === this._conf.mosID) {
-                            mosDevice = this.registerMosDevice(this._conf.mosID, parsed.mos.mosID, null, null, null);
+                            mosDevice = this._registerMosDevice(this._conf.mosID, parsed.mos.mosID, null, null, null);
                         }
                         else if (parsed.mos.mosID === this._conf.mosID) {
-                            mosDevice = this.registerMosDevice(this._conf.mosID, parsed.mos.ncsID, null, null, null);
+                            mosDevice = this._registerMosDevice(this._conf.mosID, parsed.mos.ncsID, null, null, null);
                         }
                     }
                     if (mosDevice) {
@@ -289,6 +340,7 @@ class MosConnection extends events_1.EventEmitter {
             catch (e) {
                 console.log('chunks-------------\n', client.chunks);
                 console.log('messageString---------\n', messageString);
+                console.log('error', e);
                 this.emit('error', e);
             }
         });

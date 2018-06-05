@@ -20,12 +20,12 @@ export declare class MosSocketClient extends EventEmitter {
     private _commandTimeout;
     private _queueCallback;
     private _queueMessages;
-    private _ready;
-    private processQueueInterval;
+    private _sentMessage;
+    private processQueueTimeout;
     private _startingUp;
     private dataChunks;
     /** */
-    constructor(host: string, port: number, description: string, debug?: boolean);
+    constructor(host: string, port: number, description: string, timeout?: number, debug?: boolean);
     /** */
     autoReconnect: boolean;
     /** */
@@ -51,6 +51,7 @@ export declare class MosSocketClient extends EventEmitter {
     /** */
     /** */
     private connected;
+    private _sendReply(messageId, err, res);
     /** */
     private executeCommand(message);
     /** */
@@ -58,7 +59,6 @@ export declare class MosSocketClient extends EventEmitter {
     /** */
     private _clearConnectionAttemptTimer();
     /** */
-    private _onCommandTimeout();
     /** */
     private _onConnected();
     /** */
@@ -67,4 +67,5 @@ export declare class MosSocketClient extends EventEmitter {
     private _onError(error);
     /** */
     private _onClose(hadError);
+    private _triggerQueueCleanup();
 }

@@ -4,6 +4,7 @@ import { MosSocketClient } from '../connection/mosSocketClient';
 import { MosMessage } from '../mosModel/MosMessage';
 import { EventEmitter } from 'events';
 export interface ClientDescription {
+    heartbeatConnected: boolean;
     client: MosSocketClient;
     clientDescription: string;
 }
@@ -15,6 +16,7 @@ export declare class NCSServerConnection extends EventEmitter {
     private _timeout;
     private _mosID;
     private _debug;
+    private _disposed;
     private _clients;
     private _callbackOnConnectionChange;
     private _heartBeatsTimer;
@@ -33,6 +35,8 @@ export declare class NCSServerConnection extends EventEmitter {
     readonly upperPortClients: MosSocketClient[];
     /** */
     readonly queryPortClients: MosSocketClient[];
+    readonly host: string;
+    readonly id: string;
     dispose(): Promise<void>;
     private _sendHeartBeats();
 }

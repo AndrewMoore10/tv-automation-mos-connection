@@ -56,8 +56,13 @@ export declare class MosDevice implements IMOSDevice {
     readonly hasConnection: boolean;
     readonly idPrimary: string;
     readonly idSecondary: string | null;
+    readonly primaryHost: string | null;
+    readonly primaryId: string | null;
+    readonly secondaryHost: string | null;
+    readonly secondaryId: string | null;
     emitConnectionChange(): void;
     connect(): void;
+    dispose(): Promise<void>;
     routeData(data: any): Promise<any>;
     getMachineInfo(): Promise<IMOSListMachInfo>;
     onGetMachineInfo(cb: () => Promise<IMOSListMachInfo>): void;

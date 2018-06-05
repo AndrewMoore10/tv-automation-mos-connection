@@ -91,6 +91,18 @@ class MosDevice {
     get idSecondary() {
         return this._idSecondary;
     }
+    get primaryHost() {
+        return (this._primaryConnection ? this._primaryConnection.host : null);
+    }
+    get primaryId() {
+        return (this._primaryConnection ? this._primaryConnection.id : null);
+    }
+    get secondaryHost() {
+        return (this._secondaryConnection ? this._secondaryConnection.host : null);
+    }
+    get secondaryId() {
+        return (this._secondaryConnection ? this._secondaryConnection.id : null);
+    }
     emitConnectionChange() {
         if (this._callbackOnConnectionChange)
             this._callbackOnConnectionChange(this.getConnectionStatus());
@@ -101,15 +113,26 @@ class MosDevice {
         if (this._secondaryConnection)
             this._secondaryConnection.connect();
     }
+    dispose() {
+        let ps = [];
+        if (this._primaryConnection)
+            ps.push(this._primaryConnection.dispose());
+        if (this._secondaryConnection)
+            ps.push(this._secondaryConnection.dispose());
+        return Promise.all(ps)
+            .then(() => {
+            return;
+        });
+    }
     routeData(data) {
         if (data && data.hasOwnProperty('mos'))
             data = data['mos'];
         return new Promise((resolve, reject) => {
-            if (this._debug) {
+            if (this._debug)
                 console.log('parsedData', data);
-                // console.log('parsedTest', keys)
+            // if (this._debug) console.log('parsedTest', keys)
+            if (this._debug)
                 console.log('keys', Object.keys(data));
-            }
             // Route and format data:
             // Profile 0:
             if (data.heartbeat) {
@@ -464,7 +487,8 @@ class MosDevice {
                 // TODO: Use reject if function dont exists? Put Nack in ondata
             }
             else {
-                console.log(data);
+                if (this._debug)
+                    console.log(data);
                 let msg = new mosAck_1.MOSAck();
                 msg.ID = new mosString128_1.MosString128(0); // Depends on type of message, needs logic
                 msg.Revision = 0;
@@ -732,7 +756,7 @@ class MosDevice {
                     }
                     else {
                         console.log(data.mos);
-                        reject('Unknown reply ');
+                        reject('Unknown reply');
                     }
                 }).catch(reject);
             }

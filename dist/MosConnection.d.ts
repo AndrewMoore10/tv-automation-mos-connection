@@ -2,7 +2,6 @@
 import { IConnectionConfig, IProfiles } from './config/connectionConfig';
 import { IMosConnection, IMOSDeviceConnectionOptions } from './api';
 import { MosDevice } from './MosDevice';
-import { NCSServerConnection } from './connection/NCSServerConnection';
 import { EventEmitter } from 'events';
 export declare class MosConnection extends EventEmitter implements IMosConnection {
     static CONNECTION_PORT_LOWER: number;
@@ -26,7 +25,6 @@ export declare class MosConnection extends EventEmitter implements IMosConnectio
     /** */
     connect(connectionOptions: IMOSDeviceConnectionOptions): Promise<MosDevice>;
     onConnection(cb: (mosDevice: MosDevice) => void): void;
-    registerMosDevice(myMosID: string, theirMosId0: string, theirMosId1: string | null, primary: NCSServerConnection | null, secondary: NCSServerConnection | null): MosDevice;
     /** */
     readonly isListening: boolean;
     /** */
@@ -37,8 +35,13 @@ export declare class MosConnection extends EventEmitter implements IMosConnectio
     readonly profiles: IProfiles;
     /** */
     dispose(): Promise<void>;
+    getDevice(id: string): MosDevice;
+    getDevices(): Array<MosDevice>;
+    disposeMosDevice(mosDevice: MosDevice): Promise<void>;
+    disposeMosDevice(myMosID: string, theirMosId0: string, theirMosId1: string | null): Promise<void>;
     /** */
     readonly complianceText: string;
+    private _registerMosDevice(myMosID, theirMosId0, theirMosId1, primary, secondary);
     /** */
     private _initiateIncomingConnections();
     /** */

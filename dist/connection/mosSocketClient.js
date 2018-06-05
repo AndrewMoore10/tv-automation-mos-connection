@@ -12,23 +12,24 @@ const parseOptions = {
 };
 class MosSocketClient extends events_1.EventEmitter {
     /** */
-    constructor(host, port, description, debug) {
+    constructor(host, port, description, timeout, debug) {
         super();
         this._autoReconnect = true;
         this._reconnectDelay = 3000;
         this._reconnectAttempts = 0;
         this._debug = false;
         this._shouldBeConnected = false;
+        this._connected = false;
         this._reconnectAttempt = 0;
-        this._commandTimeout = 10000;
         this._queueCallback = {};
         this._queueMessages = [];
-        this._ready = false;
+        this._sentMessage = null;
         this._startingUp = true;
         this.dataChunks = '';
         this._host = host;
         this._port = port;
         this._description = description;
+        this._commandTimeout = timeout || 5000;
         if (debug)
             this._debug = debug;
     }
@@ -49,7 +50,7 @@ class MosSocketClient extends events_1.EventEmitter {
         // prevent manipulation of active socket
         if (!this.connected) {
             // throttling attempts
-            if (!this._lastConnectionAttempt || (Date.now() - this._lastConnectionAttempt) >= this._reconnectDelay) { // !_lastReconnectionAttempt (means first attempt) OR time > _reconnectionDelay since last attempt
+            if (!this._lastConnectionAttempt || (Date.now() - this._lastConnectionAttempt) >= this._reconnectDelay) {
                 // recreate client if new attempt:
                 if (this._client && this._client.connecting) {
                     this._client.destroy();
@@ -75,9 +76,12 @@ class MosSocketClient extends events_1.EventEmitter {
             }
             // set timer to retry when needed:
             if (!this._connectionAttemptTimer) {
-                this._connectionAttemptTimer = global.setInterval(this._autoReconnectionAttempt, this._reconnectDelay);
+                this._connectionAttemptTimer = global.setInterval(() => {
+                    this._autoReconnectionAttempt();
+                }, this._reconnectDelay);
             }
-            this._ready = true;
+            // this._readyToSendMessage = true
+            // this._sentMessage = null
         }
     }
     /** */
@@ -87,23 +91,28 @@ class MosSocketClient extends events_1.EventEmitter {
     queueCommand(message, cb) {
         message.prepare();
         // console.log('queueing', message.messageID, message.constructor.name )
-        this._queueCallback[message.messageID] = cb;
-        this._queueMessages.push(message);
+        this._queueCallback[message.messageID + ''] = cb;
+        this._queueMessages.push({ time: Date.now(), msg: message });
         this.processQueue();
     }
     processQueue() {
-        if (this._ready) {
-            if (this.processQueueInterval)
-                clearInterval(this.processQueueInterval);
-            if (this._queueMessages.length) {
-                this._ready = false;
-                let message = this._queueMessages[0];
+        // console.log('this.connected', this.connected)
+        if (!this._sentMessage && this.connected) {
+            if (this.processQueueTimeout)
+                clearTimeout(this.processQueueTimeout);
+            let message = this._queueMessages.shift();
+            if (message) {
+                // Send the message:
                 this.executeCommand(message);
+            }
+            else {
+                // The queue is empty, do nothing
             }
         }
         else {
-            clearInterval(this.processQueueInterval);
-            this.processQueueInterval = setInterval(() => {
+            // Try again later:
+            clearTimeout(this.processQueueTimeout);
+            this.processQueueTimeout = setTimeout(() => {
                 this.processQueue();
             }, 200);
         }
@@ -124,7 +133,8 @@ class MosSocketClient extends events_1.EventEmitter {
     }
     /** */
     dispose() {
-        this._ready = false;
+        // this._readyToSendMessage = false
+        this.connected = false;
         this._shouldBeConnected = false;
         this._clearConnectionAttemptTimer();
         if (this._client) {
@@ -150,14 +160,39 @@ class MosSocketClient extends events_1.EventEmitter {
     get connected() {
         return this._connected;
     }
+    _sendReply(messageId, err, res) {
+        let cb = this._queueCallback[messageId + ''];
+        if (cb) {
+            cb(err, res);
+        }
+        else {
+            // this._onUnhandledCommandTimeout()
+        }
+        this._sentMessage = null;
+        delete this._queueCallback[messageId + ''];
+    }
     /** */
     executeCommand(message) {
+        if (this._sentMessage)
+            throw Error('executeCommand: there already is a sent Command!');
+        this._sentMessage = message;
+        let sentMessageId = message.msg.messageID;
+        // console.log('executeCommand', message)
         // message.prepare() // @todo, is prepared? is sent already? logic needed
-        let messageString = message.toString();
+        let messageString = message.msg.toString();
+        if (this._debug)
+            console.log('messageString', messageString);
         let buf = iconv.encode(messageString, 'utf16-be');
-        // console.log('sending',this._client.name, str)
-        global.clearTimeout(this._commandTimeoutTimer);
-        this._commandTimeoutTimer = global.setTimeout(() => this._onCommandTimeout(), this._commandTimeout);
+        // if (this._debug) console.log('sending',this._client.name, str)
+        // Command timeout:
+        global.setTimeout(() => {
+            if (this._sentMessage && this._sentMessage.msg.messageID === sentMessageId) {
+                if (this._debug)
+                    console.log('timeout ' + sentMessageId);
+                this._sendReply(sentMessageId, Error('Command timed out'), null);
+                this.processQueue();
+            }
+        }, this._commandTimeout);
         this._client.write(buf, 'ucs2');
         if (this._debug)
             console.log(`MOS command sent from ${this._description} : ${messageString}\r\nbytes sent: ${this._client.bytesWritten}`);
@@ -166,8 +201,8 @@ class MosSocketClient extends events_1.EventEmitter {
     /** */
     _autoReconnectionAttempt() {
         if (this._autoReconnect) {
-            if (this._reconnectAttempts > 0) { // no reconnection if no valid reconnectionAttemps is set
-                if ((this._reconnectAttempt >= this._reconnectAttempts)) { // if current attempt is not less than max attempts
+            if (this._reconnectAttempts > 0) {
+                if ((this._reconnectAttempt >= this._reconnectAttempts)) {
                     // reset reconnection behaviour
                     this._clearConnectionAttemptTimer();
                     return;
@@ -189,10 +224,10 @@ class MosSocketClient extends events_1.EventEmitter {
         delete this._connectionAttemptTimer;
     }
     /** */
-    _onCommandTimeout() {
-        global.clearTimeout(this._commandTimeoutTimer);
-        this.emit(socketConnection_1.SocketConnectionEvent.TIMEOUT);
-    }
+    // private _onUnhandledCommandTimeout () {
+    // 	global.clearTimeout(this._commandTimeoutTimer)
+    // 	this.emit(SocketConnectionEvent.TIMEOUT)
+    // }
     /** */
     _onConnected() {
         this._client.emit(socketConnection_1.SocketConnectionEvent.ALIVE);
@@ -237,28 +272,38 @@ class MosSocketClient extends events_1.EventEmitter {
             if (parsedData) {
                 let messageId = parsedData.mos.messageID;
                 if (messageId) {
-                    let cb = this._queueCallback[messageId];
-                    let msg = this._queueMessages[0];
-                    if (msg) {
-                        if (msg.messageID.toString() !== (messageId + '')) {
-                            console.log('Mos reply id diff: ' + messageId + ', ' + msg.messageID);
-                            console.log(parsedData);
+                    if (this._sentMessage) {
+                        if (this._sentMessage.msg.messageID.toString() === (messageId + '')) {
+                            this._sendReply(this._sentMessage.msg.messageID, null, parsedData);
                         }
-                        if (cb) {
-                            cb(null, parsedData);
-                            this._queueMessages.shift(); // remove the first message
-                            delete this._queueCallback[messageId];
+                        else {
+                            if (this._debug)
+                                console.log('Mos reply id diff: ' + messageId + ', ' + this._sentMessage.msg.messageID);
+                            if (this._debug)
+                                console.log(parsedData);
+                            this.emit('warning', 'Mos reply id diff: ' + messageId + ', ' + this._sentMessage.msg.messageID);
+                            this._triggerQueueCleanup();
                         }
+                        // let cb: CallBackFunction | undefined = this._queueCallback[messageId]
+                        // if (cb) {
+                        // 	cb(null, parsedData)
+                        // }
+                        // delete this._queueCallback[messageId]
+                        // this._sentMessage = null
                     }
                     else {
                         // huh, we've got a reply to something we've not sent.
-                        console.log('Got reply to something we\'ve not asked for', messageString);
+                        if (this._debug)
+                            console.log('Got a reply (' + messageId + '), but we haven\'t sent any message', messageString);
+                        this.emit('warning', 'Got a reply (' + messageId + '), but we haven\'t sent any message ' + messageString);
                     }
+                    clearTimeout(this._commandTimeoutTimer);
                 }
                 else {
                     // error message?
                     if (parsedData.mos.mosAck && parsedData.mos.mosAck.status === 'NACK') {
-                        console.log('Mos Error message:' + parsedData.mos.mosAck.statusDescription);
+                        if (this._debug)
+                            console.log('Mos Error message:' + parsedData.mos.mosAck.statusDescription);
                         this.emit('error', 'Error message: ' + parsedData.mos.mosAck.statusDescription);
                     }
                     else {
@@ -275,7 +320,7 @@ class MosSocketClient extends events_1.EventEmitter {
             this._startingUp = false;
         }
         catch (e) {
-            console.log('messageString', messageString);
+            // console.log('messageString', messageString)
             if (this._startingUp) {
                 // when starting up, we might get half a message, let's ignore this error then
                 console.log('Strange XML-message upon startup');
@@ -286,7 +331,7 @@ class MosSocketClient extends events_1.EventEmitter {
                 this.emit('error', e);
             }
         }
-        this._ready = true;
+        // this._readyToSendMessage = true
         this.processQueue();
     }
     /** */
@@ -298,7 +343,7 @@ class MosSocketClient extends events_1.EventEmitter {
     /** */
     _onClose(hadError) {
         this.connected = false;
-        this._ready = false;
+        // this._readyToSendMessage = false
         if (hadError) {
             if (this._debug)
                 console.log('Socket closed with error');
@@ -313,6 +358,19 @@ class MosSocketClient extends events_1.EventEmitter {
                 console.log('Socket should reconnect');
             this.connect();
         }
+    }
+    _triggerQueueCleanup() {
+        // in case we're in unsync with messages, prevent deadlock:
+        setTimeout(() => {
+            console.log('QueueCleanup');
+            for (let i = this._queueMessages.length - 1; i >= 0; i--) {
+                let message = this._queueMessages[i];
+                if (Date.now() - message.time > this._commandTimeout) {
+                    this._sendReply(message.msg.messageID, Error('Command Timeout'), null);
+                    this._queueMessages.splice(i, 1);
+                }
+            }
+        }, this._commandTimeout);
     }
 }
 exports.MosSocketClient = MosSocketClient;
